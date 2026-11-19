@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline GLB Custom Pins</title>
+    <style>
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        html,
+        body {
+
+            margin: 0;
+
+            padding: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            overflow: hidden;
+
+            font-family: Arial, sans-serif;
+
+        }
+
+
+        /* =====================================================
+           TOOLBAR
+           ===================================================== */
+
+        #toolbar {
+
+            height: 55px;
+
+            width: 100%;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding: 0 15px;
+
+            background: #252525;
+
+            color: white;
+
+        }
+
+
+        #toolbar button {
+
+            border: none;
+
+            padding: 8px 15px;
+
+            border-radius: 4px;
+
+            background: #444;
+
+            color: white;
+
+            cursor: pointer;
+
+        }
+
+
+        #toolbar button:hover {
+
+            background: #555;
+
+        }
+
+
+        #editModeButton.active {
+
+            background: #198754;
+
+        }
+
+
+        #modeLabel {
+
+            font-weight: bold;
+
+            margin-right: 15px;
+
+        }
+
+
+        /* =====================================================
+           VIEWER CONTAINER
+           ===================================================== */
+
+        #viewerContainer {
+
+            position: relative;
+
+            width: 100%;
+
+            height: calc(100vh - 55px);
+
+            overflow: hidden;
+
+        }
+
+
+        #api-frame {
+
+            position: absolute;
+
+            left: 0;
+
+            top: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            border: none;
+
+        }
+
+
+        /* =====================================================
+           PIN LAYER
+           ===================================================== */
+
+        /*
+         * The layer itself does NOT receive mouse events.
+         *
+         * Therefore normal clicks pass through to Sketchfab.
+         *
+         * Individual pins have pointer-events:auto.
+         */
+
+        #pinLayer {
+
+            position: absolute;
+
+            left: 0;
+
+            top: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            pointer-events: none;
+
+            z-index: 10;
+
+        }
+
+
+        /* =====================================================
+           PIN
+           ===================================================== */
+
+		.pin {
+			position: absolute;
+
+			width: 30px;
+			height: 36px;
+
+			transform:
+				translate(-50%, -50%);
+
+			pointer-events: auto;
+
+			cursor: pointer;
+
+			z-index: 20;
+
+			transform-origin: center center;
+
+			transition: opacity 0.1s ease;
+		}
+
+
+        /*
+         * Classic red map marker.
+         */
+
+        .pinIcon {
+			position: absolute;
+
+			left: 5px;
+			top: 5px;
+
+			width: 20px;
+			height: 20px;
+
+			border-radius: 50%;
+
+			background: #d90000;
+
+			border: 2px solid white;
+
+			box-shadow:
+				0 2px 6px rgba(0, 0, 0, 0.6);
+
+			transform: none;
+
+			transition:
+				transform 0.15s ease,
+				background 0.15s ease,
+				box-shadow 0.15s ease;
+		}
+
+
+        /*
+         * White center.
+         */
+
+
+
+     .pin:hover .pinIcon {
+    background: #d90000;
+
+    transform: scale(1.2);
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+
+        /* =====================================================
+           PIN LABEL
+           ===================================================== */
+
+        .pinLabel {
+
+            position: absolute;
+
+            left: 25px;
+
+            bottom: 31px;
+
+            display: none;
+
+            white-space: nowrap;
+
+            max-width: 250px;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+
+            padding: 5px 8px;
+
+            border-radius: 4px;
+
+            background:
+                rgba(0, 0, 0, 0.85);
+
+            color: white;
+
+            font-size: 12px;
+
+            pointer-events: none;
+
+        }
+
+
+        .pin:hover .pinLabel {
+
+            display: block;
+
+        }
+
+
+        /* =====================================================
+           STATUS
+           ===================================================== */
+
+        #status {
+
+            position: absolute;
+
+            left: 15px;
+
+            bottom: 15px;
+
+            z-index: 50;
+
+            padding: 7px 11px;
+
+            border-radius: 4px;
+
+            background:
+                rgba(0, 0, 0, 0.75);
+
+            color: white;
+
+            font-size: 13px;
+
+            pointer-events: none;
+
+        }
+
+
+        /* =====================================================
+           MODAL
+           ===================================================== */
+
+        #modalOverlay {
+
+            display: none;
+
+            position: fixed;
+
+            left: 0;
+
+            top: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            z-index: 1000;
+
+            justify-content: center;
+
+            align-items: center;
+
+            background:
+                rgba(0, 0, 0, 0.65);
+
+        }
+
+
+        #modal {
+
+            width: 450px;
+
+            max-width: 90%;
+
+            padding: 25px;
+
+            border-radius: 8px;
+
+            background: white;
+
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.5);
+
+        }
+
+
+        #modal h2 {
+
+            margin-top: 0;
+
+            margin-bottom: 20px;
+
+        }
+
+
+        .formGroup {
+
+            margin-bottom: 15px;
+
+        }
+
+
+        .formGroup label {
+
+            display: block;
+
+            margin-bottom: 5px;
+
+            font-weight: bold;
+
+        }
+
+
+        .formGroup input,
+        .formGroup textarea {
+
+            width: 100%;
+
+            padding: 9px;
+
+            border: 1px solid #ccc;
+
+            border-radius: 4px;
+
+            font-size: 14px;
+
+        }
+
+
+        .formGroup textarea {
+
+            height: 120px;
+
+            resize: vertical;
+
+        }
+
+
+        #coordinates {
+
+            margin-top: 10px;
+
+            padding: 8px;
+
+            border-radius: 4px;
+
+            background: #f4f4f4;
+
+            font-family: monospace;
+
+            font-size: 12px;
+
+            color: #555;
+
+        }
+
+
+        /* =====================================================
+           MODAL BUTTONS
+           ===================================================== */
+
+        #modalButtons {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            margin-top: 20px;
+
+        }
+
+
+        #leftButtons,
+        #rightButtons {
+
+            display: flex;
+
+            gap: 8px;
+
+        }
+
+
+        #modalButtons button {
+
+            padding: 8px 15px;
+
+            border: none;
+
+            border-radius: 4px;
+
+            cursor: pointer;
+
+        }
+
+
+        #saveButton {
+
+            background: #198754;
+
+            color: white;
+
+        }
+
+
+        #cancelButton {
+
+            background: #6c757d;
+
+            color: white;
+
+        }
+
+
+        #deleteButton {
+
+            background: #dc3545;
+
+            color: white;
+
+        }
+
+
+        /* =====================================================
+           INFO MODAL
+           ===================================================== */
+
+        #infoOverlay {
+
+            display: none;
+
+            position: fixed;
+
+            left: 0;
+
+            top: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            z-index: 1100;
+
+            justify-content: center;
+
+            align-items: center;
+
+            background:
+                rgba(0, 0, 0, 0.55);
+
+        }
+
+
+        #infoBox {
+
+            width: 400px;
+
+            max-width: 90%;
+
+            padding: 25px;
+
+            border-radius: 8px;
+
+            background: white;
+
+        }
+
+
+        #infoBox h2 {
+
+            margin-top: 0;
+
+        }
+
+
+        #closeInfoButton {
+
+            margin-top: 20px;
+
+            padding: 8px 15px;
+
+            border: none;
+
+            border-radius: 4px;
+
+            background: #555;
+
+            color: white;
+
+            cursor: pointer;
+
+        }
+
+    
+
+        /* Three.js canvas replaces the Sketchfab iframe */
+        #api-frame {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #viewerContainer {
+            background: #202020;
+        }
+
+        #api-frame canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+		.pin.dragging {
+			cursor: grabbing;
+			z-index: 100;
+		}
+
+		.pin.dragging .pinIcon {
+    transform: scale(1.35);
+
+    background: #d90000;
+
+    box-shadow:
+        0 3px 10px rgba(0, 0, 0, 0.9);
+}
+    </style>
+</head>
+<body>
+
+
+
+<!-- =========================================================
+     TOOLBAR
+     ========================================================= -->
+
+<div id="toolbar">
+
+    <button id="editModeButton">
+
+        Enable Edit Mode
+
+    </button>
+
+
+    <span id="modeLabel">
+
+        Edit Mode: OFF
+
+    </span>
+
+
+    <button id="exportButton">
+
+        Export Pins
+
+    </button>
+
+
+    <button id="clearButton">
+
+        Clear All
+
+    </button>
+<button id="exportImageButton">
+    Export Image
+</button>
+</div>
+
+
+<!-- =========================================================
+     VIEWER
+     ========================================================= -->
+
+<div id="viewerContainer">
+
+
+
+    <!--
+         Custom pins are rendered here.
+    -->
+
+    <div id="pinLayer"></div>
+
+
+    <div id="status">
+
+        Loading...
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     NEW / EDIT MODAL
+     ========================================================= -->
+
+<div id="modalOverlay">
+
+    <div id="modal">
+
+        <h2 id="modalTitle">
+
+            New Pin
+
+        </h2>
+
+
+        <div class="formGroup">
+
+            <label for="pinTitle">
+
+                Title
+
+            </label>
+
+            <input
+                id="pinTitle"
+                type="text"
+                maxlength="200"
+            >
+
+        </div>
+
+
+        <div class="formGroup">
+
+            <label for="pinDescription">
+
+                Description
+
+            </label>
+
+            <textarea
+                id="pinDescription">
+            </textarea>
+
+        </div>
+
+
+        <div id="coordinates">
+
+            X: -
+            <br>
+
+            Y: -
+            <br>
+
+            Z: -
+
+        </div>
+
+
+        <div id="modalButtons">
+
+
+            <div id="leftButtons">
+
+                <button id="deleteButton">
+
+                    Delete
+
+                </button>
+
+            </div>
+
+
+            <div id="rightButtons">
+
+                <button id="cancelButton">
+
+                    Cancel
+
+                </button>
+
+
+                <button id="saveButton">
+
+                    Save
+
+                </button>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     VIEW PIN MODAL
+     ========================================================= -->
+
+<div id="infoOverlay">
+
+    <div id="infoBox">
+
+        <h2 id="infoTitle"></h2>
+
+        <div id="infoText"></div>
+
+        <button id="closeInfoButton">
+
+            Close
+
+        </button>
+
+    </div>
+
+</div>
+
+
+
+
+<script type="module">
+import * as THREE from "./js/three.module.js";
+import { GLTFLoader } from "./js/GLTFLoader.js";
+
+const MODEL_ID = "A320_MODEL";
+//const MODEL_URL = "./airbus_a320-200_v1.glb";
+const MODEL_URL = "./a320neo.glb";
+const STORAGE_KEY = "sketchfab-custom-pins-" + MODEL_ID;
+
+let scene = null;
+let camera = null;
+let renderer = null;
+let controls = null;
+let model = null;
+let pins = [];
+let editMode = false;
+let editingPin = null;
+let newPinPosition = null;
+let draggingPin = null;
+let draggingPinMoved = false;
+let cameraMoving = false;
+let pinAnimationFrame = null;
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let modelBounds = null;
+let ground = null;
+
+const viewerContainer = document.getElementById("viewerContainer");
+const pinLayer = document.getElementById("pinLayer");
+const status = document.getElementById("status");
+const editModeButton = document.getElementById("editModeButton");
+const modeLabel = document.getElementById("modeLabel");
+const modalOverlay = document.getElementById("modalOverlay");
+const modalTitle = document.getElementById("modalTitle");
+const pinTitle = document.getElementById("pinTitle");
+const pinDescription = document.getElementById("pinDescription");
+const coordinates = document.getElementById("coordinates");
+const saveButton = document.getElementById("saveButton");
+const cancelButton = document.getElementById("cancelButton");
+const deleteButton = document.getElementById("deleteButton");
+const infoOverlay = document.getElementById("infoOverlay");
+const infoTitle = document.getElementById("infoTitle");
+const infoText = document.getElementById("infoText");
+const closeInfoButton = document.getElementById("closeInfoButton");
+
+init();
+document
+    .getElementById("exportImageButton")
+    .addEventListener("click", function() {
+
+        exportImage();
+
+    });
+function exportImage() {
+
+    if (!renderer || !scene || !camera) {
+        return;
+    }
+
+    setStatus("Creating image...");
+
+    // -----------------------------------------------------
+    // 1. Render the current Three.js scene
+    // -----------------------------------------------------
+
+    renderer.render(scene, camera);
+
+    const canvas = renderer.domElement;
+
+    // -----------------------------------------------------
+    // 2. Create export canvas
+    // -----------------------------------------------------
+
+    const exportCanvas =
+        document.createElement("canvas");
+
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+
+    const ctx =
+        exportCanvas.getContext("2d");
+
+    // -----------------------------------------------------
+    // 3. Draw Three.js canvas
+    // -----------------------------------------------------
+
+    ctx.drawImage(
+        canvas,
+        0,
+        0
+    );
+
+    // -----------------------------------------------------
+    // 4. Draw pins
+    // -----------------------------------------------------
+
+    pins.forEach(function(pin) {
+
+        if (!pin.position) {
+            return;
+        }
+
+        const position =
+            new THREE.Vector3(
+                pin.position[0],
+                pin.position[1],
+                pin.position[2]
+            );
+
+        // IMPORTANT:
+        // Project the actual 3D pin position
+        // using the SAME camera used by Three.js.
+
+        const projected =
+            position.clone().project(camera);
+
+        // Behind camera
+        if (
+            projected.z < -1 ||
+            projected.z > 1
+        ) {
+            return;
+        }
+
+        const x =
+            (projected.x + 1) *
+            0.5 *
+            canvas.width;
+
+        const y =
+            (-projected.y + 1) *
+            0.5 *
+            canvas.height;
+
+        // -------------------------------------------------
+        // Check if model is between camera and pin
+        // -------------------------------------------------
+
+        const direction =
+            position.clone()
+                .sub(camera.position);
+
+        const distance =
+            direction.length();
+
+        direction.normalize();
+
+        const testRay =
+            new THREE.Raycaster(
+                camera.position,
+                direction,
+                0,
+                distance - 0.001
+            );
+
+        const hits =
+            testRay.intersectObject(
+                model,
+                true
+            );
+
+        if (hits.length > 0) {
+            // Pin is behind the model.
+            return;
+        }
+
+        // -------------------------------------------------
+        // Calculate pin size according to camera distance
+        // -------------------------------------------------
+
+        const distanceToPin =
+            camera.position.distanceTo(position);
+
+        const referenceDistance = 5;
+
+        let pinScale =
+            referenceDistance /
+            distanceToPin;
+
+        pinScale =
+            Math.max(
+                0.25,
+                Math.min(3, pinScale)
+            );
+
+        const radius =
+            10 * pinScale;
+
+        // -------------------------------------------------
+        // Draw pin shadow
+        // -------------------------------------------------
+
+        ctx.save();
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y + radius * 0.15,
+            radius,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            "#d90000";
+
+        ctx.fill();
+
+        // -------------------------------------------------
+        // Draw white border
+        // -------------------------------------------------
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            radius + 2,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            "white";
+
+        ctx.fill();
+
+        // -------------------------------------------------
+        // Draw gray pin
+        // -------------------------------------------------
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            radius,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            "#d90000";
+
+        ctx.fill();
+
+        // -------------------------------------------------
+        // Small highlight
+        // -------------------------------------------------
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x - radius * 0.3,
+            y - radius * 0.3,
+            radius * 0.25,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            "rgba(255,255,255,0.45)";
+
+        ctx.fill();
+
+        ctx.restore();
+
+    });
+
+    // -----------------------------------------------------
+    // 5. Download PNG
+    // -----------------------------------------------------
+
+    exportCanvas.toBlob(function(blob) {
+
+        if (!blob) {
+            setStatus("Unable to create image");
+            return;
+        }
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const link =
+            document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+            MODEL_ID + "-image.png";
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        URL.revokeObjectURL(url);
+
+        setStatus("Image exported");
+
+    }, "image/png");
+}
+function init() {
+    scene = new THREE.Scene();
+   // scene.background = new THREE.Color(0x202020);
+    scene.background = new THREE.Color(0xbdbdbd);
+    camera = new THREE.PerspectiveCamera(
+        45,
+        viewerContainer.clientWidth / viewerContainer.clientHeight,
+        0.01,
+        10000
+    );
+    camera.position.set(0, 0, 5);
+
+renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: false,
+    preserveDrawingBuffer: true
+});
+
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type =
+    THREE.PCFSoftShadowMap;
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(
+        viewerContainer.clientWidth,
+        viewerContainer.clientHeight
+    );
+
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1;
+
+    viewerContainer.insertBefore(renderer.domElement, pinLayer);
+
+// =====================================================
+// LIGHTING
+// =====================================================
+
+// Soft ambient light
+const ambientLight =
+    new THREE.HemisphereLight(
+        0xffffff,
+        0x666666,
+        1.2
+    );
+
+scene.add(ambientLight);
+
+
+// Main light coming from above
+const keyLight =
+    new THREE.DirectionalLight(
+        0xffffff,
+        4
+    );
+
+keyLight.position.set(
+    5,
+    15,
+    5
+);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+
+keyLight.shadow.camera.near = 0.1;
+keyLight.shadow.camera.far = 100;
+scene.add(keyLight);
+
+
+// Soft fill light
+const fillLight =
+    new THREE.DirectionalLight(
+        0xffffff,
+        0.8
+    );
+
+fillLight.position.set(
+    -5,
+    4,
+    -5
+);
+
+scene.add(fillLight);
+
+
+
+    // Simple orbit controls without another dependency.
+    controls = createOrbitControls(camera, renderer.domElement);
+
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+
+    window.addEventListener("resize", onResize);
+
+    loadModel();
+
+    animate();
+}
+function loadModel() {
+    setStatus("Loading 3D model...");
+
+    const loader = new GLTFLoader();
+
+    loader.load(
+        MODEL_URL,
+
+        function(gltf) {
+
+            model = gltf.scene;
+model.traverse(function(child) {
+
+    if (child.isMesh) {
+
+        child.castShadow = true;
+        child.receiveShadow = false;
+
+    }
+
+});
+            scene.add(model);
+
+            // =====================================================
+            // 1. Find original model bounds
+            // =====================================================
+
+            model.updateMatrixWorld(true);
+
+            let box = new THREE.Box3().setFromObject(model);
+
+            const center = box.getCenter(
+                new THREE.Vector3()
+            );
+
+            const size = box.getSize(
+                new THREE.Vector3()
+            );
+
+            const maxDimension = Math.max(
+                size.x,
+                size.y,
+                size.z
+            );
+
+            console.log("Original model size:", size);
+            console.log("Original model center:", center);
+
+
+            // =====================================================
+            // 2. Center model
+            // =====================================================
+
+            model.position.sub(center);
+
+            model.updateMatrixWorld(true);
+
+
+            // =====================================================
+            // 3. Normalize model size
+            // =====================================================
+
+            const targetSize = 4;
+
+            if (maxDimension > 0) {
+
+                const scale =
+                    targetSize / maxDimension;
+
+                model.scale.setScalar(scale);
+            }
+
+            model.updateMatrixWorld(true);
+
+
+            // =====================================================
+            // 4. Recalculate normalized bounds
+            // =====================================================
+
+            modelBounds =
+                new THREE.Box3().setFromObject(model);
+
+            const normalizedCenter =
+                modelBounds.getCenter(
+                    new THREE.Vector3()
+                );
+
+            const normalizedSize =
+                modelBounds.getSize(
+                    new THREE.Vector3()
+                );
+
+            const maxSize = Math.max(
+                normalizedSize.x,
+                normalizedSize.y,
+                normalizedSize.z
+            );
+
+            console.log(
+                "Normalized model size:",
+                normalizedSize
+            );
+
+            console.log(
+                "Normalized model center:",
+                normalizedCenter
+            );
+
+
+            // =====================================================
+            // 5. Make sure model is REALLY centered
+            // =====================================================
+
+            model.position.sub(
+                normalizedCenter
+            );
+
+            model.updateMatrixWorld(true);
+
+
+            // =====================================================
+            // 6. Calculate camera distance automatically
+            // =====================================================
+
+            const fov =
+                THREE.MathUtils.degToRad(
+                    camera.fov
+                );
+
+            const halfSize =
+                maxSize / 2;
+
+            let distance =
+                halfSize /
+                Math.tan(fov / 2);
+
+            // Small margin around the model.
+            distance *= 1.35;
+
+
+            // =====================================================
+            // 7. Camera position
+            // =====================================================
+
+            camera.position.set(
+                distance,
+                distance * 0.45,
+                distance
+            );
+
+
+            // =====================================================
+            // 8. Camera clipping planes
+            // =====================================================
+
+            camera.near =
+                Math.max(
+                    distance / 1000,
+                    0.001
+                );
+
+            camera.far =
+                Math.max(
+                    distance * 100,
+                    1000
+                );
+
+            camera.updateProjectionMatrix();
+
+
+            // =====================================================
+            // 9. OrbitControls target
+            // =====================================================
+
+            controls.target.set(
+                0,
+                0,
+                0
+            );
+
+            controls.update();
+
+if (ground) {
+    scene.remove(ground);
+    ground.geometry.dispose();
+    ground.material.dispose();
+}
+
+const groundGeometry =
+    new THREE.PlaneGeometry(100, 100);
+
+const groundMaterial =
+    new THREE.ShadowMaterial({
+        opacity: 0.18
+    });
+
+ground =
+    new THREE.Mesh(
+        groundGeometry,
+        groundMaterial
+    );
+
+ground.rotation.x =
+    -Math.PI / 2;
+
+// Recalculate model bounds
+model.updateMatrixWorld(true);
+
+modelBounds =
+    new THREE.Box3().setFromObject(model);
+
+// Put ground directly under model
+ground.position.y =
+    modelBounds.min.y + 0.5;
+
+ground.receiveShadow = true;
+
+scene.add(ground);
+
+            // =====================================================
+            // 10. Pins
+            // =====================================================
+
+            loadPins();
+
+            initializeModelClick();
+
+            updatePinPositions();
+
+
+            setStatus("Viewer ready");
+        },
+
+
+        function(xhr) {
+
+            if (xhr.total) {
+
+                const percent =
+                    Math.round(
+                        (xhr.loaded / xhr.total) * 100
+                    );
+
+                setStatus(
+                    "Loading 3D model... " +
+                    percent +
+                    "%"
+                );
+            }
+        },
+
+
+        function(error) {
+
+            console.error(
+                "GLB loading error:",
+                error
+            );
+
+            setStatus(
+                "Unable to load GLB model"
+            );
+        }
+    );
+}
+
+function initializeModelClick() {
+    // Nothing Sketchfab-specific is needed here.
+}
+
+function onPointerDown(event) {
+    if (event.button !== 0) return;
+
+    const rect = renderer.domElement.getBoundingClientRect();
+
+    mouse.x =
+        ((event.clientX - rect.left) / rect.width) * 2 - 1;
+
+    mouse.y =
+        -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    renderer.domElement._pointerDownX = event.clientX;
+    renderer.domElement._pointerDownY = event.clientY;
+    renderer.domElement._pointerDownTime = performance.now();
+
+    cameraMoving = true;
+}
+
+function onPointerMove() {
+    // Pin positions are updated in the animation loop.
+}
+
+function onPointerUp(event) {
+    const dx =
+        event.clientX -
+        renderer.domElement._pointerDownX;
+
+    const dy =
+        event.clientY -
+        renderer.domElement._pointerDownY;
+
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    const elapsed =
+        performance.now() -
+        renderer.domElement._pointerDownTime;
+
+    cameraMoving = false;
+
+    updatePinPositions();
+
+    // Only treat a short, small movement as a model click.
+    if (distance < 5 && elapsed < 500) {
+        handleModelClick(event);
+    }
+}
+
+function handleModelClick(event) {
+    if (!model) return;
+
+    const rect = renderer.domElement.getBoundingClientRect();
+
+    mouse.x =
+        ((event.clientX - rect.left) / rect.width) * 2 - 1;
+
+    mouse.y =
+        -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersections =
+        raycaster.intersectObject(model, true);
+
+    if (!intersections.length) return;
+
+    const hit = intersections[0];
+
+    console.log("MODEL CLICK:", hit.point);
+
+    if (!editMode) {
+        return;
+    }
+
+    openNewPinModal([
+        hit.point.x,
+        hit.point.y,
+        hit.point.z
+    ]);
+}
+
+function onWheel(event) {
+    event.preventDefault();
+
+    if (!controls) {
+        return;
+    }
+
+    controls.zoom(event.deltaY);
+}
+
+function createPinElement(pin) {
+
+    const element = document.createElement("div");
+
+    element.className = "pin";
+
+    const icon = document.createElement("div");
+
+    icon.className = "pinIcon";
+
+    const label = document.createElement("div");
+
+    label.className = "pinLabel";
+
+    label.innerText = pin.title;
+
+    element.appendChild(icon);
+    element.appendChild(label);
+
+    // =====================================================
+    // PIN MOUSE DOWN
+    // =====================================================
+
+    element.addEventListener("pointerdown", function(event) {
+
+        if (!editMode) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        draggingPin = pin;
+        draggingPinMoved = false;
+
+        element.setPointerCapture(event.pointerId);
+
+        element.classList.add("dragging");
+
+    });
+
+
+    // =====================================================
+    // PIN MOUSE MOVE
+    // =====================================================
+
+    element.addEventListener("pointermove", function(event) {
+
+        if (!editMode || draggingPin !== pin) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        draggingPinMoved = true;
+
+        movePinToMouse(event, pin);
+
+    });
+
+
+    // =====================================================
+    // PIN MOUSE UP
+    // =====================================================
+
+    element.addEventListener("pointerup", function(event) {
+
+        if (!editMode || draggingPin !== pin) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        movePinToMouse(event, pin);
+
+        element.classList.remove("dragging");
+
+        try {
+            element.releasePointerCapture(event.pointerId);
+        } catch (e) {
+            // Ignore
+        }
+
+        draggingPin = null;
+
+        savePins();
+
+        setStatus("Pin position updated");
+
+    });
+
+
+    // =====================================================
+    // PIN CLICK
+    // =====================================================
+
+    element.addEventListener("click", function(event) {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        // If the pin was dragged, don't open modal.
+        if (draggingPinMoved) {
+            draggingPinMoved = false;
+            return;
+        }
+
+        if (editMode) {
+
+            openEditPinModal(pin);
+
+        } else {
+
+            showPinInfo(pin);
+
+        }
+
+    });
+
+
+    pin.element = element;
+
+    pinLayer.appendChild(element);
+
+    updateSinglePinPosition(pin);
+}
+function movePinToMouse(event, pin) {
+
+    if (!renderer || !camera || !model) {
+        return;
+    }
+
+    const rect =
+        renderer.domElement.getBoundingClientRect();
+
+    mouse.x =
+        ((event.clientX - rect.left) / rect.width) * 2 - 1;
+
+    mouse.y =
+        -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(
+        mouse,
+        camera
+    );
+
+    const intersections =
+        raycaster.intersectObject(
+            model,
+            true
+        );
+
+    if (!intersections.length) {
+        return;
+    }
+
+    const hit =
+        intersections[0];
+
+    // =====================================================
+    // NEW 3D POSITION
+    // =====================================================
+
+    pin.position = [
+        hit.point.x,
+        hit.point.y,
+        hit.point.z
+    ];
+
+    // =====================================================
+    // UPDATE PIN SCREEN POSITION
+    // =====================================================
+
+    updateSinglePinPosition(pin);
+
+}
+function updateSinglePinPosition(pin) {
+
+    if (!pin.element || !camera || !model || !renderer) {
+        return;
+    }
+
+    const position = new THREE.Vector3(
+        pin.position[0],
+        pin.position[1],
+        pin.position[2]
+    );
+
+    // =====================================================
+    // 3D POSITION -> SCREEN POSITION
+    // =====================================================
+
+    const projected =
+        position.clone().project(camera);
+
+    const rect =
+        renderer.domElement.getBoundingClientRect();
+
+    const x =
+        (projected.x + 1) * 0.5 * rect.width;
+
+    const y =
+        (-projected.y + 1) * 0.5 * rect.height;
+
+    // =====================================================
+    // CHECK CAMERA VISIBILITY
+    // =====================================================
+
+    const visible =
+        projected.z >= -1 &&
+        projected.z <= 1;
+
+    if (!visible) {
+        pin.element.style.display = "none";
+        return;
+    }
+
+    // =====================================================
+    // IMPORTANT:
+    // ACTUALLY SET THE PIN SCREEN POSITION
+    // =====================================================
+
+    pin.element.style.left = x + "px";
+    pin.element.style.top = y + "px";
+
+    pin.element.style.display = "block";
+
+    // =====================================================
+    // CHECK IF MODEL IS BETWEEN CAMERA AND PIN
+    // =====================================================
+
+    let occluded = false;
+
+    const direction =
+        position.clone().sub(camera.position);
+
+    const distance =
+        direction.length();
+
+    direction.normalize();
+
+    const testRay =
+        new THREE.Raycaster(
+            camera.position,
+            direction,
+            0,
+            distance - 0.001
+        );
+
+    const hits =
+        testRay.intersectObject(
+            model,
+            true
+        );
+
+    if (hits.length > 0) {
+        occluded = true;
+    }
+
+    // =====================================================
+    // PIN SIZE
+    // =====================================================
+
+    const distanceToPin =
+        camera.position.distanceTo(position);
+
+    const referenceDistance = 5;
+
+    let pinScale =
+        referenceDistance / distanceToPin;
+
+    pinScale = Math.max(
+        0.25,
+        Math.min(3, pinScale)
+    );
+
+    pin.element.style.transform =
+        `translate(-50%, -50%) scale(${pinScale})`;
+
+    // =====================================================
+    // OCCLUDED PIN
+    // =====================================================
+
+    if (occluded) {
+
+        pin.element.style.opacity = "0.35";
+
+        pin.element.style.pointerEvents = "auto";
+
+    } else {
+
+        pin.element.style.opacity = "1";
+
+        pin.element.style.pointerEvents = "auto";
+    }
+}
+
+function updatePinPositions() {
+    if (!pins.length) {
+        return;
+    }
+
+    pins.forEach(function(pin) {
+        updateSinglePinPosition(pin);
+    });
+}
+
+/*function startPinAnimation() {
+    if (pinAnimationFrame) {
+        return;
+    }
+
+    function animatePins() {
+        updatePinPositions();
+
+        if (cameraMoving) {
+            pinAnimationFrame =
+                requestAnimationFrame(animatePins);
+        } else {
+            pinAnimationFrame = null;
+        }
+    }
+
+    pinAnimationFrame =
+        requestAnimationFrame(animatePins);
+}
+*/
+function removePinElement(pin) {
+    if (pin.element) {
+        pin.element.remove();
+        pin.element = null;
+    }
+}
+
+function renderPins() {
+    pins.forEach(function(pin) {
+        removePinElement(pin);
+    });
+
+    pins.forEach(function(pin) {
+        createPinElement(pin);
+    });
+
+    updatePinPositions();
+}
+
+function openNewPinModal(position) {
+    editingPin = null;
+
+    newPinPosition = [
+        position[0],
+        position[1],
+        position[2]
+    ];
+
+    modalTitle.innerText = "New Pin";
+    pinTitle.value = "";
+    pinDescription.value = "";
+
+    deleteButton.style.display = "none";
+
+    showCoordinates(newPinPosition);
+
+    modalOverlay.style.display = "flex";
+
+    setTimeout(function() {
+        pinTitle.focus();
+    }, 0);
+}
+
+function openEditPinModal(pin) {
+    editingPin = pin;
+    newPinPosition = null;
+
+    modalTitle.innerText = "Edit Pin";
+    pinTitle.value = pin.title;
+    pinDescription.value = pin.text || "";
+
+    deleteButton.style.display = "block";
+
+    showCoordinates(pin.position);
+
+    modalOverlay.style.display = "flex";
+
+    setTimeout(function() {
+        pinTitle.focus();
+    }, 0);
+}
+
+function showCoordinates(position) {
+    coordinates.innerHTML =
+        "X: " + position[0].toFixed(6) +
+        "<br>" +
+        "Y: " + position[1].toFixed(6) +
+        "<br>" +
+        "Z: " + position[2].toFixed(6);
+}
+
+function closeModal() {
+    modalOverlay.style.display = "none";
+
+    editingPin = null;
+    newPinPosition = null;
+}
+
+saveButton.addEventListener("click", function() {
+    const title = pinTitle.value.trim();
+    const text = pinDescription.value.trim();
+
+    if (!title) {
+        alert("Title is required.");
+        pinTitle.focus();
+        return;
+    }
+
+    if (!editingPin) {
+        const pin = {
+            id: crypto.randomUUID(),
+            modelId: MODEL_ID,
+            position: [
+                newPinPosition[0],
+                newPinPosition[1],
+                newPinPosition[2]
+            ],
+            title: title,
+            text: text,
+            element: null
+        };
+
+        pins.push(pin);
+
+        savePins();
+        createPinElement(pin);
+
+        setStatus("New pin created");
+    } else {
+        editingPin.title = title;
+        editingPin.text = text;
+
+        if (editingPin.element) {
+            const label =
+                editingPin.element.querySelector(".pinLabel");
+
+            if (label) {
+                label.innerText = title;
+            }
+        }
+
+        savePins();
+
+        setStatus("Pin updated");
+    }
+
+    closeModal();
+});
+
+cancelButton.addEventListener("click", function() {
+    closeModal();
+});
+
+deleteButton.addEventListener("click", function() {
+    if (!editingPin) {
+        return;
+    }
+
+    if (!confirm("Delete this pin?")) {
+        return;
+    }
+
+    deletePin(editingPin);
+    closeModal();
+});
+
+function deletePin(pin) {
+    removePinElement(pin);
+
+    pins = pins.filter(function(item) {
+        return item !== pin;
+    });
+
+    savePins();
+
+    setStatus("Pin deleted");
+}
+
+function showPinInfo(pin) {
+    infoTitle.innerText = pin.title;
+    infoText.innerText = pin.text || "";
+
+    infoOverlay.style.display = "flex";
+}
+
+closeInfoButton.addEventListener("click", function() {
+    infoOverlay.style.display = "none";
+});
+
+editModeButton.addEventListener("click", function() {
+    editMode = !editMode;
+
+    if (editMode) {
+        editModeButton.innerText = "Disable Edit Mode";
+        editModeButton.classList.add("active");
+        modeLabel.innerText = "Edit Mode: ON";
+        setStatus("Click model to add a pin");
+    } else {
+        editModeButton.innerText = "Enable Edit Mode";
+        editModeButton.classList.remove("active");
+        modeLabel.innerText = "Edit Mode: OFF";
+        setStatus("View Mode");
+    }
+});
+
+function savePins() {
+    const data = pins.map(function(pin) {
+        return {
+            id: pin.id,
+            modelId: pin.modelId,
+            x: pin.position[0],
+            y: pin.position[1],
+            z: pin.position[2],
+            title: pin.title,
+            text: pin.text
+        };
+    });
+
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(data)
+    );
+}
+
+function loadPins() {
+    const stored =
+        localStorage.getItem(STORAGE_KEY);
+
+    if (!stored) {
+        pins = [];
+        return;
+    }
+
+    try {
+        const data = JSON.parse(stored);
+
+        pins = data.map(function(item) {
+            return {
+                id: item.id,
+                modelId: item.modelId,
+                position: [
+                    Number(item.x),
+                    Number(item.y),
+                    Number(item.z)
+                ],
+                title: item.title,
+                text: item.text || "",
+                element: null
+            };
+        });
+
+        renderPins();
+
+        setStatus(
+            pins.length + " pins loaded"
+        );
+    } catch (error) {
+        console.error("Error loading pins:", error);
+        pins = [];
+    }
+};
+
+document
+    .getElementById("exportButton")
+    .addEventListener("click", function() {
+
+        const data = pins.map(function(pin) {
+            return {
+                modelId: pin.modelId,
+                x: pin.position[0],
+                y: pin.position[1],
+                z: pin.position[2],
+                title: pin.title,
+                text: pin.text
+            };
+        });
+
+        const json =
+            JSON.stringify(data, null, 4);
+
+        console.log(json);
+
+        const blob = new Blob(
+            [json],
+            { type: "application/json" }
+        );
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const link =
+            document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+            MODEL_ID + "-pins.json";
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        URL.revokeObjectURL(url);
+    });
+
+document
+    .getElementById("clearButton")
+    .addEventListener("click", function() {
+
+        if (!editMode) {
+            alert("Enable Edit Mode first.");
+            return;
+        }
+
+        if (!pins.length) {
+            return;
+        }
+
+        if (!confirm("Delete all pins?")) {
+            return;
+        }
+
+        pins.forEach(function(pin) {
+            removePinElement(pin);
+        });
+
+        pins = [];
+
+        localStorage.removeItem(STORAGE_KEY);
+
+        setStatus("All pins deleted");
+    });
+
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+        closeModal();
+        infoOverlay.style.display = "none";
+    }
+});
+
+function setStatus(message) {
+    status.innerText = message;
+}
+
+function onResize() {
+    if (!renderer || !camera) {
+        return;
+    }
+
+    const width = viewerContainer.clientWidth;
+    const height = viewerContainer.clientHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(width, height);
+
+    updatePinPositions();
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    if (controls) {
+        controls.update();
+    }
+
+    renderer.render(scene, camera);
+
+    // Always update pins after the camera has been updated.
+    if (model && pins.length) {
+        updatePinPositions();
+    }
+}
+
+/*
+ * Minimal offline OrbitControls implementation.
+ * This avoids requiring another external JS file.
+ */
+function createOrbitControls(camera, domElement) {
+    const target = new THREE.Vector3();
+
+    let rotating = false;
+    let panning = false;
+
+    let lastX = 0;
+    let lastY = 0;
+
+    let spherical = new THREE.Spherical();
+
+    const state = {
+        distance: camera.position.distanceTo(target),
+        theta: 0,
+        phi: Math.PI / 2
+    };
+
+    function updateSphericalFromCamera() {
+        const offset =
+            camera.position.clone().sub(target);
+
+        spherical.setFromVector3(offset);
+
+        state.distance = spherical.radius;
+        state.theta = spherical.theta;
+        state.phi = spherical.phi;
+    }
+
+    updateSphericalFromCamera();
+
+    domElement.addEventListener("pointerdown", function(event) {
+        if (event.button === 0) {
+            rotating = true;
+        }
+
+        if (event.button === 2) {
+            panning = true;
+        }
+
+        lastX = event.clientX;
+        lastY = event.clientY;
+
+        domElement.setPointerCapture(event.pointerId);
+    });
+
+    domElement.addEventListener("pointermove", function(event) {
+        if (!rotating && !panning) {
+            return;
+        }
+
+        const dx = event.clientX - lastX;
+        const dy = event.clientY - lastY;
+
+        lastX = event.clientX;
+        lastY = event.clientY;
+
+        if (rotating) {
+            state.theta -= dx * 0.01;
+            state.phi -= dy * 0.01;
+
+            state.phi = Math.max(
+                0.05,
+                Math.min(Math.PI - 0.05, state.phi)
+            );
+        }
+
+        if (panning) {
+            const distance = state.distance;
+
+            const panSpeed = distance * 0.001;
+
+            const right =
+                new THREE.Vector3()
+                    .setFromMatrixColumn(
+                        camera.matrix,
+                        0
+                    );
+
+            const up =
+                new THREE.Vector3()
+                    .setFromMatrixColumn(
+                        camera.matrix,
+                        1
+                    );
+
+            target.addScaledVector(
+                right,
+                -dx * panSpeed
+            );
+
+            target.addScaledVector(
+                up,
+                dy * panSpeed
+            );
+        }
+
+        update();
+        cameraMoving = true;
+    });
+
+    domElement.addEventListener("pointerup", function(event) {
+        rotating = false;
+        panning = false;
+
+        cameraMoving = false;
+
+        if (domElement.hasPointerCapture(event.pointerId)) {
+            domElement.releasePointerCapture(event.pointerId);
+        }
+
+        updatePinPositions();
+    });
+
+    domElement.addEventListener("contextmenu", function(event) {
+        event.preventDefault();
+    });
+
+    function update() {
+        const sinPhiRadius =
+            Math.sin(state.phi) * state.distance;
+
+        camera.position.set(
+            target.x +
+                sinPhiRadius *
+                Math.sin(state.theta),
+
+            target.y +
+                Math.cos(state.phi) *
+                state.distance,
+
+            target.z +
+                sinPhiRadius *
+                Math.cos(state.theta)
+        );
+
+        camera.lookAt(target);
+    }
+
+    return {
+    target: target,
+
+    update: function() {
+        update();
+    },
+
+    zoom: function(deltaY) {
+        const zoomSpeed = 0.0015;
+
+        state.distance *= Math.exp(deltaY * zoomSpeed);
+
+        state.distance = Math.max(
+            0.2,
+            Math.min(100, state.distance)
+        );
+
+        update();
+    }
+};
+}
+</script>
+
+</body>
+</html>

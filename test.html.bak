@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+
+    <script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
+
+    <style>
+        #api-frame {
+            width: 100%;
+            height: 600px;
+            border: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<iframe
+    id="api-frame"
+    src=""
+    allow="autoplay; fullscreen; xr-spatial-tracking"
+    allowfullscreen>
+</iframe>
+
+<script>
+
+    const iframe = document.getElementById('api-frame');
+
+    // Sketchfab model UID
+    const uid = 'c078f9af15884a6b820c7e778831b110';
+
+    const client = new Sketchfab('1.12.1', iframe);
+
+    client.init(uid, {
+
+        success: function(api) {
+
+            api.start();
+
+            api.addEventListener('viewerready', function() {
+
+                console.log('Viewer ready');
+
+                // Camera position
+                api.getCameraLookAt(function(err, camera) {
+
+                    if (err) {
+                        console.error(err);
+                        return;
+                    }
+
+                    // X, Y, Z position on the model
+                    const position = [0.12, -3.57, -0.51];
+const pins = [
+    {
+        x: 0.12,
+        y: -3.57,
+        z: -0.51,
+        title: 'Engine',
+        text: 'Engine inspection point'
+    },
+    {
+        x: 1.25,
+        y: -2.10,
+        z: 0.85,
+        title: 'Wing',
+        text: 'Wing inspection point'
+    },
+    {
+        x: -0.75,
+        y: 0.45,
+        z: 1.20,
+        title: 'Landing Gear',
+        text: 'Landing gear inspection point'
+    }
+];
+pins.forEach(pin => {
+
+        api.createAnnotationFromWorldPosition(
+            [pin.x, pin.y, pin.z],
+            camera.position,
+            camera.target,
+            pin.title,
+            pin.text,
+            function(err, index) {
+
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+
+                console.log(
+                    pin.title,
+                    'created with index:',
+                    index
+                );
+            }
+        );
+
+    });
+	
+	api.addEventListener(
+    'click',
+    function(info) {
+
+        if (!info.position3D) {
+            return;
+        }
+
+        console.log('Clicked position:', info.position3D);
+
+    },
+    { pick: 'slow' }
+);
+                    api.createAnnotationFromWorldPosition(
+                        position,
+                        camera.position,
+                        camera.target,
+                        'Engine',
+                        'This is the engine location.',
+                        function(err, index) {
+
+                            if (err) {
+                                console.error(err);
+                                return;
+                            }
+
+                            console.log(
+                                'Annotation created:',
+                                index
+                            );
+                        }
+                    );
+
+                });
+
+            });
+        },
+
+        error: function() {
+            console.error('Sketchfab viewer failed to initialize');
+        }
+    });
+
+</script>
+
+</body>
+</html>
